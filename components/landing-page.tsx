@@ -37,11 +37,11 @@ export function LandingPage() {
             Nect
           </p>
           <h1 className="max-w-4xl text-5xl font-semibold italic leading-[0.95] md:text-7xl">
-            <span className="font-serif">Forge your influence.</span>
+            <span className="font-serif">Grow your influence.</span>
           </h1>
           <p className="max-w-3xl text-lg text-zinc-300 md:text-xl">
-            Nect is the ultimate orchestration engine for Insta, X, Reddit,
-            Facebook, and LinkedIn. One tab. Total dominance.
+            Nect is the connector for Insta, X, Reddit,
+            Facebook, and LinkedIn. Post, reply, create, draft, schedule from one tab to all your accounts.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Link
