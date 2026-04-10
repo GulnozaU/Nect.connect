@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { decryptLinkedInToken } from "@/lib/linkedin-token-crypto";
+import { getCalendarClient } from "@/lib/google-calendar";
 
 export async function POST(request: Request) {
-  const { text } = await request.json();
+  const { text, scheduledAt, platform = "linkedin" } = await request.json();
 
   if (!text || typeof text !== "string" || text.trim().length === 0) {
     return NextResponse.json({ error: "Post text is required." }, { status: 400 });
   }
 
-  // 2. Authenticate via Supabase — uses the project's existing server client helper
   const supabase = await createClient();
 
   const {
@@ -21,71 +21,123 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  // 3. Fetch the encrypted LinkedIn token and person ID from the profiles table
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("linkedin_access_token, linkedin_person_id")
+    .select(
+      "linkedin_access_token, linkedin_person_id, google_calendar_access_token, google_calendar_refresh_token, google_calendar_token_expiry, google_calendar_connected"
+    )
     .eq("id", user.id)
     .single();
 
   if (profileError || !profile) {
-    return NextResponse.json(
-      { error: "Could not retrieve LinkedIn profile." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Could not retrieve profile." }, { status: 500 });
   }
 
   if (!profile.linkedin_access_token || !profile.linkedin_person_id) {
+    return NextResponse.json({ error: "LinkedIn account is not connected." }, { status: 400 });
+  }
+
+  // ── Scheduled post path ──────────────────────────────────────────────────
+  if (scheduledAt) {
+    const { data: scheduledPost, error: scheduleError } = await supabase
+      .from("scheduled_posts")
+      .insert({
+        user_id: user.id,
+        text: text.trim(),
+        scheduled_at: scheduledAt,
+        platform: platform, // 2. UPDATED: Now uses the platform variable
+        status: "pending",   // Changed 'scheduled' to 'pending' to match cron logic
+      })
+      .select()
+      .single();
+
+    if (scheduleError || !scheduledPost) {
+      console.error("[publish] Failed to save scheduled post:", scheduleError);
+      return NextResponse.json({ error: "Failed to schedule post." }, { status: 500 });
+    }
+
+    if (
+      profile.google_calendar_connected &&
+      profile.google_calendar_access_token &&
+      profile.google_calendar_refresh_token
+    ) {
+      try {
+        const calendar = await getCalendarClient(
+          profile.google_calendar_access_token,
+          profile.google_calendar_refresh_token,
+          profile.google_calendar_token_expiry
+        );
+
+        const startTime = new Date(scheduledAt);
+        const endTime = new Date(startTime.getTime() + 15 * 60 * 1000);
+
+        const event = await calendar.events.insert({
+          calendarId: "primary",
+          requestBody: {
+            summary: `📤 ${platform.charAt(0).toUpperCase() + platform.slice(1)} Post`,
+            description: text.trim(),
+            start: { dateTime: startTime.toISOString() },
+            end: { dateTime: endTime.toISOString() },
+            colorId: "6",
+          },
+        });
+
+        await supabase
+          .from("scheduled_posts")
+          .update({ google_calendar_event_id: event.data.id })
+          .eq("id", scheduledPost.id);
+      } catch (calErr) {
+        console.error("[publish] Google Calendar event creation failed:", calErr);
+      }
+    }
+
     return NextResponse.json(
-      { error: "LinkedIn account is not connected." },
-      { status: 400 }
+      { success: true, scheduledPostId: scheduledPost.id },
+      { status: 201 }
     );
   }
 
-  // 4. Decrypt the access token
+  // ── Immediate publish path ───────────────────────────────────────────────
   let accessToken: string;
   try {
     accessToken = await decryptLinkedInToken(profile.linkedin_access_token);
   } catch (err) {
-    console.error("Failed to decrypt LinkedIn token:", err);
+    console.error("[publish] Token decryption failed:", err);
     return NextResponse.json(
       { error: "Failed to process LinkedIn credentials." },
       { status: 500 }
     );
   }
 
-  // 5. Publish via the standard ugcPosts endpoint (works with w_member_social scope)
-  const linkedInPayload = {
-    author: `urn:li:person:${profile.linkedin_person_id}`,
-    lifecycleState: "PUBLISHED",
-    specificContent: {
-      "com.linkedin.ugc.ShareContent": {
-        shareCommentary: {
-          text: text.trim(),
-        },
-        shareMediaCategory: "NONE",
-      },
-    },
-    visibility: {
-      "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
-    },
-  };
-
+  // 3. UPDATED: Using /rest/posts and modern schema
   let linkedInResponse: Response;
   try {
-    linkedInResponse = await fetch("https://api.linkedin.com/v2/ugcPosts", {
+    linkedInResponse = await fetch("https://api.linkedin.com/rest/posts", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        "Authorization": `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        "LinkedIn-Version": "202401", // Correct 6-digit version
         "X-Restli-Protocol-Version": "2.0.0",
       },
-      body: JSON.stringify(linkedInPayload),
+      body: JSON.stringify({
+        author: profile.linkedin_person_id.startsWith("urn:")
+          ? profile.linkedin_person_id
+          : `urn:li:person:${profile.linkedin_person_id}`,
+        commentary: text.trim(),
+        visibility: "PUBLIC",
+        distribution: {
+          feedDistribution: "MAIN_FEED",
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
+        },
+        lifecycleState: "PUBLISHED",
+      }),
     });
   } catch (err) {
     console.error("[publish] LinkedIn fetch failed:", err);
     return NextResponse.json(
-      { error: "Network error reaching LinkedIn. Please try again." },
+      { error: "Network error reaching LinkedIn." },
       { status: 502 }
     );
   }
@@ -100,6 +152,5 @@ export async function POST(request: Request) {
   }
 
   const postUrn = linkedInResponse.headers.get("x-restli-id");
-
   return NextResponse.json({ success: true, postUrn }, { status: 201 });
 }
