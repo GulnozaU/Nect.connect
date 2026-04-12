@@ -1,4 +1,3 @@
-
 import { Suspense } from "react";
 import Link from "next/link";
 
@@ -6,6 +5,7 @@ import { LinkedInStatusBanner } from "@/components/linkedin-status-banner";
 import PostEditor from "@/components/post-editor";
 import ScheduledCalendar from "@/components/scheduled-calendar";
 import { createClient } from "@/lib/supabase/server";
+import { publishDuePosts } from "@/app/api/publish/duepublish/route";
 
 import DashboardClient from "@/app/dashboard/dashboard-client";
 
@@ -18,6 +18,11 @@ export default async function DashboardPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Silently publish any scheduled posts that are now due — no cron needed
+  if (user) {
+    await publishDuePosts();
+  }
 
   const profile = user
     ? (
