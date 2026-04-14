@@ -42,27 +42,31 @@ export interface ScheduledCalendarHandle {
   refresh: () => void;
 }
 
+// Posts with these statuses can be edited/deleted
+const EDITABLE_STATUSES = ["pending", "scheduled"];
+
 const statusStyles: Record<string, string> = {
-  pending: "border-zinc-700 text-zinc-500",
+  pending:   "border-zinc-700 text-zinc-500",
+  scheduled: "border-zinc-700 text-zinc-500",
   published: "border-green-800 text-green-600",
-  failed: "border-red-800 text-red-600",
+  failed:    "border-red-800 text-red-600",
 };
 
 const ScheduledCalendar = forwardRef<
   ScheduledCalendarHandle,
   ScheduledCalendarProps
 >(({ googleCalendarConnected }, ref) => {
-  const [posts, setPosts] = useState<ScheduledPost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<EditingState | null>(null);
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [posts, setPosts]         = useState<ScheduledPost[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [editing, setEditing]     = useState<EditingState | null>(null);
+  const [savingId, setSavingId]   = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [errorId, setErrorId] = useState<string | null>(null);
+  const [errorId, setErrorId]     = useState<string | null>(null);
 
   async function fetchPosts() {
     setLoading(true);
     try {
-      const res = await fetch("/api/scheduled-posts");
+      const res  = await fetch("/api/scheduled-posts");
       const data = await res.json();
       setPosts(data.posts ?? []);
     } catch {
@@ -78,7 +82,7 @@ const ScheduledCalendar = forwardRef<
   function startEdit(post: ScheduledPost) {
     const dt = new Date(post.scheduled_at);
     setEditing({
-      id: post.id,
+      id:   post.id,
       text: post.text,
       date: dt.toISOString().split("T")[0],
       time: dt.toTimeString().slice(0, 5),
@@ -108,7 +112,6 @@ const ScheduledCalendar = forwardRef<
       });
 
       if (!res.ok) throw new Error();
-
       setEditing(null);
       await fetchPosts();
     } catch {
@@ -128,8 +131,6 @@ const ScheduledCalendar = forwardRef<
       });
 
       if (!res.ok) throw new Error();
-
-      // Optimistic remove
       setPosts((prev) => prev.filter((p) => p.id !== id));
     } catch {
       setErrorId(id);
@@ -143,8 +144,8 @@ const ScheduledCalendar = forwardRef<
     (acc, post) => {
       const key = new Date(post.scheduled_at).toLocaleDateString(undefined, {
         weekday: "long",
-        month: "long",
-        day: "numeric",
+        month:   "long",
+        day:     "numeric",
       });
       if (!acc[key]) acc[key] = [];
       acc[key].push(post);
@@ -187,7 +188,7 @@ const ScheduledCalendar = forwardRef<
         </div>
       </div>
 
-      {/* Content */}
+      {/* Post list */}
       {loading ? (
         <div className="space-y-3">
           {[1, 2].map((i) => (
@@ -213,11 +214,11 @@ const ScheduledCalendar = forwardRef<
               </p>
               <div className="space-y-2">
                 {dayPosts.map((post) => {
-                  const isEditing = editing?.id === post.id;
-                  const isSaving = savingId === post.id;
+                  const isEditing  = editing?.id === post.id;
+                  const isSaving   = savingId === post.id;
                   const isDeleting = deletingId === post.id;
-                  const hasError = errorId === post.id;
-                  const isPending = post.status === "pending";
+                  const hasError   = errorId === post.id;
+                  const canEdit    = EDITABLE_STATUSES.includes(post.status);
 
                   return (
                     <div
@@ -239,7 +240,7 @@ const ScheduledCalendar = forwardRef<
                             rows={3}
                             className="w-full resize-none bg-transparent text-sm leading-7 text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
                           />
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <input
                               type="date"
                               min={today}
@@ -272,7 +273,12 @@ const ScheduledCalendar = forwardRef<
                               </button>
                               <button
                                 onClick={saveEdit}
-                                disabled={isSaving || !editing.text.trim() || !editing.date || !editing.time}
+                                disabled={
+                                  isSaving ||
+                                  !editing.text.trim() ||
+                                  !editing.date ||
+                                  !editing.time
+                                }
                                 className="inline-flex items-center gap-1.5 rounded-md bg-[#F97316] px-3 py-1.5 text-xs font-semibold text-black hover:bg-[#ea580c] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                               >
                                 {isSaving ? (
@@ -327,8 +333,7 @@ const ScheduledCalendar = forwardRef<
                               {post.status}
                             </span>
 
-                            {/* Edit and delete only on pending posts */}
-                            {isPending && (
+                            {canEdit && (
                               <>
                                 <button
                                   onClick={() => startEdit(post)}
