@@ -1,3 +1,10 @@
+// FILE: app/api/publish/route.ts
+// PURPOSE: Handles both immediate publishing and scheduling.
+//          POST /api/publish
+//          Body: { text, platform?, scheduledAt? }
+//          - If scheduledAt is provided: saves to scheduled_posts table + creates Google Calendar event
+//          - If no scheduledAt: publishes immediately to LinkedIn
+
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { decryptLinkedInToken } from "@/lib/linkedin-token-crypto";
@@ -37,7 +44,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "LinkedIn account is not connected." }, { status: 400 });
   }
 
-  // ── Scheduled post path ──────────────────────────────────────────────────
+  // ── SCHEDULE path ────────────────────────────────────────────────────────
   if (scheduledAt) {
     const { data: scheduledPost, error: scheduleError } = await supabase
       .from("scheduled_posts")
@@ -56,6 +63,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to schedule post." }, { status: 500 });
     }
 
+    // Create Google Calendar event if connected
     if (
       profile.google_calendar_connected &&
       profile.google_calendar_access_token &&
@@ -78,7 +86,7 @@ export async function POST(request: Request) {
             description: text.trim(),
             start: { dateTime: startTime.toISOString() },
             end: { dateTime: endTime.toISOString() },
-            colorId: "6",
+            colorId: "6", // orange
           },
         });
 
@@ -87,45 +95,26 @@ export async function POST(request: Request) {
           .update({ google_calendar_event_id: event.data.id })
           .eq("id", scheduledPost.id);
       } catch (calErr) {
-        console.error("[publish] Google Calendar event creation failed:", calErr);
+        console.error("[publish] Calendar event creation failed:", calErr);
+        // Non-fatal — post is still scheduled
       }
     }
 
-    return NextResponse.json(
-      { success: true, scheduledPostId: scheduledPost.id },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true, scheduledPostId: scheduledPost.id }, { status: 201 });
   }
 
-  // ── Immediate publish path ───────────────────────────────────────────────
+  // ── IMMEDIATE PUBLISH path ───────────────────────────────────────────────
   let accessToken: string;
   try {
     accessToken = await decryptLinkedInToken(profile.linkedin_access_token);
   } catch (err) {
     console.error("[publish] Token decryption failed:", err);
-    return NextResponse.json(
-      { error: "Failed to process LinkedIn credentials." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to process LinkedIn credentials." }, { status: 500 });
   }
 
-  // Uses /v2/ugcPosts — works with standard w_member_social scope.
-  // No LinkedIn-Version header needed here.
-  const linkedInPayload = {
-    author: profile.linkedin_person_id.startsWith("urn:")
-      ? profile.linkedin_person_id
-      : `urn:li:member:${profile.linkedin_person_id}`,
-    lifecycleState: "PUBLISHED",
-    specificContent: {
-      "com.linkedin.ugc.ShareContent": {
-        shareCommentary: { text: text.trim() },
-        shareMediaCategory: "NONE",
-      },
-    },
-    visibility: {
-      "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
-    },
-  };
+  const author = profile.linkedin_person_id.startsWith("urn:")
+    ? profile.linkedin_person_id
+    : `urn:li:member:${profile.linkedin_person_id}`;
 
   let linkedInResponse: Response;
   try {
@@ -135,15 +124,25 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
         "X-Restli-Protocol-Version": "2.0.0",
+        // NO LinkedIn-Version header — not needed on /v2/ugcPosts
       },
-      body: JSON.stringify(linkedInPayload),
+      body: JSON.stringify({
+        author,
+        lifecycleState: "PUBLISHED",
+        specificContent: {
+          "com.linkedin.ugc.ShareContent": {
+            shareCommentary: { text: text.trim() },
+            shareMediaCategory: "NONE",
+          },
+        },
+        visibility: {
+          "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+        },
+      }),
     });
   } catch (err) {
     console.error("[publish] LinkedIn fetch failed:", err);
-    return NextResponse.json(
-      { error: "Network error reaching LinkedIn." },
-      { status: 502 }
-    );
+    return NextResponse.json({ error: "Network error reaching LinkedIn." }, { status: 502 });
   }
 
   if (!linkedInResponse.ok) {

@@ -1,3 +1,9 @@
+// FILE: app/api/auth/google-calendar/callback/route.ts
+// PURPOSE: GET /api/auth/google-calendar/callback
+//          Receives the OAuth code from Google after user grants calendar access.
+//          Exchanges the code for tokens and saves them to the profiles table.
+//          Redirects to /dashboard?gcal=connected on success.
+
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getOAuthClient } from "@/lib/google-calendar";
@@ -8,32 +14,25 @@ export async function GET(request: Request) {
   const error = searchParams.get("error");
 
   if (error || !code) {
-    return NextResponse.redirect(
-      new URL("/dashboard?gcal=error", request.url)
-    );
+    return NextResponse.redirect(new URL("/dashboard?gcal=error", request.url));
   }
 
-  // Exchange code for tokens
   const client = getOAuthClient();
   let tokens;
+
   try {
     const response = await client.getToken(code);
     tokens = response.tokens;
   } catch (err) {
     console.error("[gcal callback] Token exchange failed:", err);
-    return NextResponse.redirect(
-      new URL("/dashboard?gcal=error", request.url)
-    );
+    return NextResponse.redirect(new URL("/dashboard?gcal=error", request.url));
   }
 
   if (!tokens.access_token || !tokens.refresh_token) {
     console.error("[gcal callback] Missing tokens in response");
-    return NextResponse.redirect(
-      new URL("/dashboard?gcal=error", request.url)
-    );
+    return NextResponse.redirect(new URL("/dashboard?gcal=error", request.url));
   }
 
-  // Save tokens to the user's profile
   const supabase = await createClient();
   const {
     data: { user },
@@ -57,12 +56,8 @@ export async function GET(request: Request) {
 
   if (updateError) {
     console.error("[gcal callback] Failed to save tokens:", updateError);
-    return NextResponse.redirect(
-      new URL("/dashboard?gcal=error", request.url)
-    );
+    return NextResponse.redirect(new URL("/dashboard?gcal=error", request.url));
   }
 
-  return NextResponse.redirect(
-    new URL("/dashboard?gcal=connected", request.url)
-  );
+  return NextResponse.redirect(new URL("/dashboard?gcal=connected", request.url));
 }
