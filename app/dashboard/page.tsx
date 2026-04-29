@@ -1,9 +1,4 @@
-// FILE: app/dashboard/page.tsx
-// PURPOSE: The main dashboard home page at /dashboard
-//          - Fires publishDuePosts() on every load (replaces cron job)
-//          - Shows quick action card linking to AI post creation
-//          - Shows post editor + scheduled calendar for authenticated users
-//          - Shows guest upsell for unauthenticated users
+
 
 import { Suspense } from "react";
 import Link from "next/link";
@@ -12,7 +7,7 @@ import { PenLine, ArrowRight, Sparkles } from "lucide-react";
 import { LinkedInStatusBanner } from "@/components/linkedin-status-banner";
 import DashboardClient from "@/app/dashboard/dashboard-client";
 import { createClient } from "@/lib/supabase/server";
-import { publishDuePosts } from "@/app/actions/publishDuePosts";
+import { publishDuePosts } from "@/app/api/publish/duepublish/route";
 
 export default async function DashboardPage({
   searchParams,
