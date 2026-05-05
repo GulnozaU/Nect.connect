@@ -62,12 +62,11 @@ export async function POST(request: Request) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-api-key": process.env.ANTHROPIC_API_KEY || "", // No hardcoded key here!
+            "x-api-key": process.env.ANTHROPIC_API_KEY || "", 
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
-            model: "claude-3-5-sonnet-latest", // Updated to a valid model name
-            max_tokens: 1024,
+            model: "claude-3-5-sonnet-latest", 
             system: systemPrompt,
             messages: [{ role: "user", content: userPrompt }],
           }),
