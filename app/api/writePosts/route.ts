@@ -6,20 +6,23 @@ const PLATFORM_INSTRUCTIONS: Record<string, string> = {
     Include a hook first line, insight or story, and end with a question or CTA. 
     No hashtags in the body — add 3-5 relevant hashtags at the end on a new line.`,
 
-  instagram: `Write an Instagram caption. Conversational, energetic, relatable. 
+ /* instagram: `Write an Instagram caption. Conversational, energetic, relatable. 
     80-150 words. Start with an attention-grabbing first line. 
     Use 2-4 relevant emojis naturally throughout. 
     End with a question or CTA. Add 8-12 hashtags on a new line at the end.`,
-
+*/
   x: `Write a tweet (X post). Maximum 280 characters. 
     Sharp, punchy, opinionated or insightful. 
     No hashtags unless essential. No filler words. 
     Make every word count. Can use a thread format (1/ 2/ etc.) if the idea needs more space.`,
-
-  reddit: `Write a Reddit post. Authentic, community-focused, no marketing speak. 
+ facebook: `Write a Facebook post. Professional yet human tone. 150-300 words. 
+    Include a hook first line, insight or story, and end with a question or CTA. 
+    No hashtags in the body — add 3-5 relevant hashtags at the end on a new line.`,
+  /*reddit: `Write a Reddit post. Authentic, community-focused, no marketing speak. 
     150-250 words. Sound like a real person sharing something genuinely interesting. 
     Include relevant context, be specific, and invite discussion. 
     Do NOT use hashtags. Do NOT use emojis excessively. Title on first line, body below.`,
+*/
 };
 
 export async function POST(request: Request) {
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
 
   const platformsToGenerate = platform
     ? [platform]
-    : ["linkedin", "instagram", "x", "reddit"];
+    : ["linkedin", "x", "facebook"];
 
   try {
     const results = await Promise.all(
@@ -59,7 +62,7 @@ export async function POST(request: Request) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-api-key": "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",
+            "x-api-key": process.env.ANTHROPIC_API_KEY || "", // No hardcoded key here!
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
@@ -72,8 +75,8 @@ export async function POST(request: Request) {
 
         if (!response.ok) {
           const errorData = await response.json();
-          console.error("Anthropic API detailed error:", errorData);
-          throw new Error(`Claude API error: ${response.status}`);
+          console.error(" API detailed error:", errorData);
+          throw new Error(`Groq API error: ${response.status}`);
         }
 
         const data = await response.json();

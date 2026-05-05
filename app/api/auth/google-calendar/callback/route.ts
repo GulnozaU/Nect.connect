@@ -1,8 +1,4 @@
-// FILE: app/api/auth/google-calendar/callback/route.ts
-// PURPOSE: GET /api/auth/google-calendar/callback
-//          Receives the OAuth code from Google after user grants calendar access.
-//          Exchanges the code for tokens and saves them to the profiles table.
-//          Redirects to /dashboard?gcal=connected on success.
+
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
