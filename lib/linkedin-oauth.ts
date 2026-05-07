@@ -12,7 +12,6 @@ export function getLinkedInRedirectUri(): string {
     uri = `${window.location.origin}/api/auth/linkedin/callback`;
   } else {
     uri = "https://nect-connect.vercel.app/api/auth/linkedin/callback";
-    uri = "http://localhost:3000/api/auth/linkedin/callback";
   }
 
   console.log("DEBUG: Sending Redirect URI to LinkedIn ->", uri);
