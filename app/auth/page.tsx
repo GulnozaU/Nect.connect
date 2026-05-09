@@ -283,12 +283,13 @@ export default function AuthPage() {
             </div>
 
             {/* Terms checkbox — signup only */}
-            {mode === "signup" || mode === "signin"&& (
+            {mode === "signup" && (
               <div className="flex items-start gap-3">
                 <input
                   id="terms"
                   type="checkbox"
                   checked={agreed}
+                  required
                   onChange={(e) => setAgreed(e.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-900 accent-[#F97316]"
                 />
@@ -297,7 +298,6 @@ export default function AuthPage() {
                   <Link href="/privacy" className="text-zinc-300 underline hover:text-white transition-colors">
                     Terms of Service and Privacy Policy
                   </Link>{" "}
-                  and{" "}
                   .
                 </label>
               </div>
