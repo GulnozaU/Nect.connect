@@ -37,10 +37,8 @@ export default async function DashboardLayout({
       <DashboardSidebar
         isAuthenticated={Boolean(user)}
         connected={{
-          instagram: connected?.instagram_connected ?? defaultConnected.instagram,
           x: connected?.x_connected ?? defaultConnected.x,
-          reddit: connected?.reddit_connected ?? defaultConnected.reddit,
-          facebook: connected?.facebook_connected ?? defaultConnected.facebook,
+          //facebook: connected?.facebook_connected ?? defaultConnected.facebook,
           linkedin: connected?.linkedin_connected ?? defaultConnected.linkedin,
         }}
       />
