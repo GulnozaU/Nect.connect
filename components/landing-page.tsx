@@ -480,6 +480,7 @@ export function LandingPage() {
             <Link href="/auth" className="transition-colors hover:text-zinc-400">Log in</Link>
             <Link href="/auth?next=/onboarding" className="transition-colors hover:text-zinc-400">Sign up</Link>
             <Link href="/dashboard" className="transition-colors hover:text-zinc-400">Dashboard</Link>
+            <Link href="/privacy" className="transition-colors hover:text-zinc-400">Terms of Use</Link>
           </div>
         </div>
       </footer>
