@@ -16,7 +16,6 @@ interface Props {
 
 const PLATFORMS = [
   { key: "linkedin",  label: "LinkedIn",  icon: Linkedin,  color: "#0A66C2", connectHref: "/api/auth/linkedin",  available: true },
-  { key: "facebook",  label: "Facebook",  icon: Facebook,  color: "#1877F2", connectHref: "/api/auth/facebook",  available: true },
   { key: "x",         label: "X",         icon: Radio,     color: "#e4e4e7", connectHref: "/api/auth/twitter",   available: true },
 ];
 
