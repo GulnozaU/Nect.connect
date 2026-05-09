@@ -60,8 +60,6 @@ export default function LegalPage() {
           open={openSection === "terms"}
           onToggle={() => toggle("terms")}
           ></Section>
-            {/* ── Terms of Service ── */}
-        <Section title="Terms of Service" icon={<FileText className="h-4 w-4" />} open={openSection === "terms"} onToggle={() => toggle("terms")}>
         <div className="space-y-4 text-sm text-zinc-400 leading-relaxed">
           <p className="text-[10px] text-zinc-600">Last updated: May 2026</p>
           <h3 className="text-sm font-semibold text-zinc-300">1. Acceptance of Terms</h3>
@@ -81,7 +79,6 @@ export default function LegalPage() {
           <h3 className="text-sm font-semibold text-zinc-300">8. Changes</h3>
           <p>We may update these terms. Continued use after changes constitutes acceptance. Contact: terms@nect.ai</p>
         </div>
-      </Section>
 
 
       </div>

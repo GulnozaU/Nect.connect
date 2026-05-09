@@ -87,10 +87,10 @@ function InView({ children, className = "" }: { children: React.ReactNode; class
 // ── Data ──────────────────────────────────────────────────────────────────────
 const platforms = [
   { name: "LinkedIn",  icon: Linkedin,      color: "#0A66C2" },
-  { name: "Instagram", icon: Instagram,     color: "#E1306C" },
+  { name: "Coming:Instagram", icon: Instagram,     color: "#E1306C" },
   { name: "X",         icon: Radio,         color: "#e4e4e7" },
-  { name: "Reddit",    icon: MessageCircle, color: "#FF4500" },
-  { name: "Facebook",  icon: Facebook,      color: "#1877F2" },
+  { name: "Coming:Reddit",    icon: MessageCircle, color: "#FF4500" },
+  { name: "Coming:Facebook",  icon: Facebook,      color: "#1877F2" },
 ];
 
 const steps = [
@@ -155,7 +155,6 @@ const plans = [
     features: [
       "3 connected platforms",
       "20 AI generations/month",
-      "10 scheduled posts",
       "Google Calendar sync",
     ],
     cta: "Start free",
@@ -164,12 +163,11 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "$9",
+    price: "$7",
     period: "/month",
     features: [
       "All 5 platforms",
       "Unlimited AI generations",
-      "Unlimited scheduling",
       "Priority support",
       "Advanced analytics",
     ],
@@ -179,7 +177,7 @@ const plans = [
   },
 ];
 
-const testimonials = [
+/*const testimonials = [
   {
     quote: "I used to spend 45 minutes repurposing one blog post across platforms. Now it takes 90 seconds.",
     name: "Sarah K.",
@@ -195,7 +193,7 @@ const testimonials = [
     name: "Priya M.",
     role: "Marketing Lead",
   },
-];
+];*/
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function LandingPage() {
