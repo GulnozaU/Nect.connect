@@ -283,7 +283,7 @@ export default function AuthPage() {
             </div>
 
             {/* Terms checkbox — signup only */}
-            {mode === "signup" && (
+            {mode === "signup" || mode === "signin"&& (
               <div className="flex items-start gap-3">
                 <input
                   id="terms"
