@@ -112,7 +112,11 @@ export default function CreatePostPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Publish failed");
-      setPublished((prev) => new Set([...prev, platform]));
+      setPublished((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(platform);
+        return newSet;
+      });
       showToast("success", `Published to ${PLATFORM_META[platform].label}!`);
     } catch (err) {
       showToast("error", err instanceof Error ? err.message : "Publish failed");
