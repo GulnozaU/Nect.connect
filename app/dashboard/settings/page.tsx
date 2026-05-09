@@ -19,7 +19,6 @@ export default async function SettingsPage() {
       user={{ id: user.id, email: user.email ?? "", name: profile?.full_name ?? "" }}
       connected={{
         linkedin:        !!profile?.linkedin_connected,
-        facebook:        !!profile?.facebook_connected,
         x:               !!profile?.x_connected,
         googleCalendar:  !!profile?.google_calendar_connected,
       }}

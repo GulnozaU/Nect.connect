@@ -11,7 +11,7 @@ import {
 
 interface Props {
   user: { id: string; email: string; name: string };
-  connected: { linkedin: boolean; facebook: boolean; x: boolean; googleCalendar: boolean };
+  connected: { linkedin: boolean;  x: boolean; googleCalendar: boolean };
 }
 
 const PLATFORMS = [
@@ -128,7 +128,7 @@ export default function SettingsClient({ user, connected }: Props) {
             </div>
 
             {/* Coming soon */}
-            {[{ label: "Instagram", color: "#E1306C" }, { label: "Reddit", color: "#FF4500" }].map(({ label, color }) => (
+            {[{ label: "Coming:Instagram", color: "#E1306C" }, { label: "Coming:Reddit", color: "#FF4500" }].map(({ label, color }) => (
               <div key={label} className="flex items-center justify-between rounded-xl border border-white/5 bg-black/10 px-4 py-3 opacity-50">
                 <span className="text-sm text-zinc-600">{label}</span>
                 <span className="rounded-full border border-zinc-800 px-2.5 py-1 text-[10px] text-zinc-700">Coming soon</span>
