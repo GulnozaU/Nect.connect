@@ -1,17 +1,3 @@
-// FILE PATH: app/api/auth/x/route.ts
-// URL: /api/auth/x  (matches what sidebar links to)
-// Initiates X (Twitter) OAuth 2.0 with PKCE.
-//
-// REQUIRED in .env.local / Vercel env vars:
-//   X_CLIENT_ID=your_client_id
-//   X_CLIENT_SECRET=your_client_secret
-//   X_REDIRECT_URI=https://nect-connect.vercel.app/api/auth/x/callback
-//
-// In X Developer Portal → Your App → App Settings → Authentication settings:
-//   - OAuth 2.0: ON
-//   - App type: Web App
-//   - Callback URI: https://nect-connect.vercel.app/api/auth/x/callback
-//   - Scopes: tweet.read  tweet.write  users.read  offline.access
 
 import { NextResponse } from "next/server";
 import crypto from "crypto";
