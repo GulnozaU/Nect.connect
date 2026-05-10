@@ -6,8 +6,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Forge",
-  description: "Social media orchestration",
+  title: "Nect",
+  description: "Turn one idea into content for every platform",
 };
 
 export default async function RootLayout({

@@ -1,7 +1,3 @@
-// FILE: app/dashboard/dashboard-client.tsx
-// PURPOSE: Client wrapper that coordinates PostEditor and ScheduledCalendar.
-//          When a post is scheduled via PostEditor, it triggers ScheduledCalendar to refresh.
-//          Also shows a toast when Google Calendar is connected/failed (from URL param).
 
 "use client";
 
