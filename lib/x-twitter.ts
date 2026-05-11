@@ -129,6 +129,76 @@ export async function fetchConversationReplies(
   return out;
 }
 
+export type TimelineTweet = {
+  id: string;
+  text: string;
+  createdAt: string;
+  likes: number;
+  replies: number;
+  reposts: number;
+};
+
+/** Recent posts authored by the authenticated user (OAuth user id = x_person_id). */
+export async function fetchUserTweetsTimeline(
+  accessToken: string,
+  xUserId: string,
+  maxResults = 15
+): Promise<TimelineTweet[]> {
+  const url = new URL(`https://api.twitter.com/2/users/${encodeURIComponent(xUserId)}/tweets`);
+  url.searchParams.set("max_results", String(Math.min(Math.max(maxResults, 5), 100)));
+  url.searchParams.set("exclude", "retweets");
+  url.searchParams.set("tweet.fields", "created_at,public_metrics");
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return [];
+
+  const json = (await res.json()) as {
+    data?: Array<{
+      id: string;
+      text: string;
+      created_at?: string;
+      public_metrics?: { like_count?: number; reply_count?: number; retweet_count?: number };
+    }>;
+  };
+
+  return (json.data ?? []).map((t) => ({
+    id: t.id,
+    text: t.text,
+    createdAt: t.created_at ?? "",
+    likes: t.public_metrics?.like_count ?? 0,
+    replies: t.public_metrics?.reply_count ?? 0,
+    reposts: t.public_metrics?.retweet_count ?? 0,
+  }));
+}
+
+export async function postReplyTweet(
+  accessToken: string,
+  text: string,
+  inReplyToTweetId: string
+): Promise<{ ok: boolean; status: number; tweetId?: string; body: string }> {
+  const res = await fetch("https://api.twitter.com/2/tweets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      text,
+      reply: { in_reply_to_tweet_id: inReplyToTweetId },
+    }),
+  });
+  const body = await res.text();
+  if (!res.ok) return { ok: false, status: res.status, body };
+  try {
+    const json = JSON.parse(body) as { data?: { id?: string } };
+    return { ok: true, status: res.status, tweetId: json.data?.id, body };
+  } catch {
+    return { ok: false, status: res.status, body };
+  }
+}
+
 export async function postTweetV2(accessToken: string, text: string): Promise<{
   ok: boolean;
   status: number;

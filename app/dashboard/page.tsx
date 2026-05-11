@@ -6,6 +6,7 @@ import { PenLine, ArrowRight, Sparkles } from "lucide-react";
 
 import { LinkedInStatusBanner } from "@/components/linkedin-status-banner";
 import DashboardClient from "@/app/dashboard/dashboard-client";
+import { DashboardCommentsStrip } from "@/components/dashboard-comments-strip";
 import { createClient } from "@/lib/supabase/server";
 import { publishDuePosts } from "@/app/api/publish/duepublish/route";
 
@@ -29,7 +30,7 @@ export default async function DashboardPage({
         await supabase
           .from("profiles")
           .select(
-            "full_name, linkedin_connected, preferred_platforms, google_calendar_connected"
+            "full_name, linkedin_connected, x_connected, preferred_platforms, google_calendar_connected"
           )
           .eq("id", user.id)
           .maybeSingle()
@@ -84,6 +85,10 @@ export default async function DashboardPage({
             preferredPlatforms={profile?.preferred_platforms ?? []}
             googleCalendarConnected={!!profile?.google_calendar_connected}
             gcalStatus={searchParams.gcal}
+          />
+          <DashboardCommentsStrip
+            xConnected={!!profile?.x_connected}
+            linkedinConnected={!!profile?.linkedin_connected}
           />
         </>
       ) : (

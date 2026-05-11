@@ -17,7 +17,10 @@ export type PostMetricsPayload = {
 
 export type CommentPayload = {
   id: string;
+  /** X tweet id — use as `in_reply_to_tweet_id` when posting a reply. */
+  tweetId: string;
   scheduledPostId: string;
+  rootTweetId: string;
   platform: string;
   author: string;
   text: string;
@@ -167,7 +170,9 @@ export async function GET() {
       for (const r of replies) {
         comments.push({
           id: `${p.id}-${r.id}`,
+          tweetId: r.id,
           scheduledPostId: p.id,
+          rootTweetId: p.platform_post_id!,
           platform: "x",
           author: r.authorUsername,
           text: r.text,
