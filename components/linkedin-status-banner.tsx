@@ -11,6 +11,32 @@ export function LinkedInStatusBanner() {
     const status = searchParams.get("linkedin");
     const connect = searchParams.get("connect");
     const message = searchParams.get("message");
+    const xStatus = searchParams.get("x");
+    const xReason = searchParams.get("x_reason");
+    const xDetail = searchParams.get("x_detail");
+
+    if (xStatus === "connected") {
+      setVisible("X connected successfully.");
+      return;
+    }
+    if (xStatus === "error") {
+      let decodedDetail = "";
+      if (xDetail) {
+        try {
+          decodedDetail = decodeURIComponent(xDetail);
+        } catch {
+          decodedDetail = xDetail;
+        }
+      }
+      const parts = [
+        "X connection failed.",
+        xReason && `(${xReason})`,
+        decodedDetail,
+      ].filter(Boolean);
+      setVisible(parts.join(" "));
+      return;
+    }
+
     if (status === "connected") {
       setVisible("LinkedIn connected successfully.");
     } else if (status === "error") {
@@ -26,7 +52,8 @@ export function LinkedInStatusBanner() {
 
   const isError =
     searchParams.get("linkedin") === "error" ||
-    searchParams.get("linkedin") === "session";
+    searchParams.get("linkedin") === "session" ||
+    searchParams.get("x") === "error";
 
   return (
     <div
