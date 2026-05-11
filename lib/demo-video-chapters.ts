@@ -10,7 +10,7 @@ export type DemoChapter = {
 export const DEMO_VIDEO_PATH_MP4 = "/demo_YC-S26.mp4";
 
 /** QuickTime container — fallback; original asset name is `demo_YC-S26.mov` in repo root / `public/` */
-export const DEMO_VIDEO_PATH_MOV = "/demo_YC-S26.mov";
+export const DEMO_VIDEO_PATH_MOV = "/demo_YC-S26.mp4";
 
 /** Order matches: idea → AI drafts → edit & schedule → calendar / overview */
 export const DEMO_CHAPTERS: DemoChapter[] = [
