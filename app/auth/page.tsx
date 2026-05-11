@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -51,6 +51,16 @@ export default function AuthPage() {
 
   const supabase = createClient();
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") !== "auth_callback_failed") return;
+    setError(
+      "Google sign-in did not complete. In the Supabase dashboard: Authentication → URL Configuration — add your site URL and `/api/auth/callback` under Redirect URLs. In Google Cloud Console (APIs & Services → Credentials → your OAuth client): Authorized redirect URIs must include `https://<your-project-ref>.supabase.co/auth/v1/callback` (from Supabase → Authentication → Providers → Google)."
+    );
+    const clean = `${window.location.pathname}${window.location.hash}`;
+    window.history.replaceState({}, "", clean);
+  }, []);
+
   // ── Google OAuth ──────────────────────────────────────────────────────────
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
@@ -59,7 +69,6 @@ export default function AuthPage() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/api/auth/callback`,
-        queryParams: { access_type: "offline", prompt: "consent" },
       },
     });
     if (error) {

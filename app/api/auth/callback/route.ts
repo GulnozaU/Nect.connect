@@ -1,29 +1,36 @@
+import { NextRequest, NextResponse } from "next/server";
 
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { sanitizeRelativeNextPath } from "@/lib/safe-redirect";
+import { createRouteHandlerSupabase } from "@/lib/supabase/route-handler";
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
-  const type = searchParams.get("type"); // "recovery" for password reset
+export const dynamic = "force-dynamic";
 
-  if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+  const nextParam = url.searchParams.get("next");
+  const type = url.searchParams.get("type");
 
-    if (!error) {
-     
-      if (type === "recovery") {
-        return NextResponse.redirect(`${origin}/auth/update-password`);
-      }
+  const next = sanitizeRelativeNextPath(nextParam, "/dashboard");
+  const finalPath = type === "recovery" ? "/auth/update-password" : next;
 
-      return NextResponse.redirect(`${origin}${next}`);
-    }
-
-    console.error("[auth/callback] Code exchange failed:", error.message);
+  if (!code) {
+    return NextResponse.redirect(
+      new URL("/auth?error=auth_callback_failed", url.origin)
+    );
   }
 
+  const response = NextResponse.redirect(new URL(finalPath, url.origin));
+  const supabase = createRouteHandlerSupabase(request, response);
 
-  return NextResponse.redirect(`${origin}/auth?error=auth_callback_failed`);
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    console.error("[auth/callback] Code exchange failed:", error.message);
+    return NextResponse.redirect(
+      new URL("/auth?error=auth_callback_failed", url.origin)
+    );
+  }
+
+  return response;
 }
