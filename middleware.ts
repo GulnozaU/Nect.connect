@@ -46,6 +46,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Skip Supabase session middleware on OAuth callbacks so PKCE cookies are not touched mid-request.
-    "/((?!_next/static|_next/image|favicon.ico|api/auth|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/auth|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mov|mp4|webm|m4v|ogg|ico|woff2?)$).*)",
   ],
 };

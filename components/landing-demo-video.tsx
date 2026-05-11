@@ -6,7 +6,8 @@ import { Play } from "lucide-react";
 
 import {
   DEMO_CHAPTERS,
-  DEMO_VIDEO_PATH,
+  DEMO_VIDEO_PATH_MP4,
+  DEMO_VIDEO_PATH_MOV,
   type DemoChapter,
 } from "@/lib/demo-video-chapters";
 
@@ -27,6 +28,7 @@ export function LandingDemoVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const softEndRef = useRef<number | null>(null);
   const [activeId, setActiveId] = useState<string>(DEMO_CHAPTERS[0]?.id ?? "");
+  const [videoBroken, setVideoBroken] = useState(false);
 
   const goToChapter = useCallback((ch: DemoChapter) => {
     const v = videoRef.current;
@@ -85,20 +87,38 @@ export function LandingDemoVideo() {
           className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_24px_80px_rgba(0,0,0,0.65)]"
         >
           <div className="relative aspect-video w-full bg-black">
-            <video
-              ref={videoRef}
-              className="h-full w-full object-contain"
-              controls
-              playsInline
-              preload="metadata"
-              onTimeUpdate={onTimeUpdate}
-              onSeeked={onSeeked}
-              aria-label="Nect product demo video"
-            >
-              <source src={DEMO_VIDEO_PATH} type="video/quicktime" />
-              Your browser may not play this MOV preview — open the site in Safari or Chrome on desktop, or convert the
-              file to MP4 for broader support.
-            </video>
+            {videoBroken ? (
+              <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-4 px-6 text-center">
+                <p className="max-w-md text-sm text-zinc-400">
+                  This browser could not load the demo file. Try opening the MP4 directly, or use Safari / a recent
+                  Chrome build.
+                </p>
+                <a
+                  href={DEMO_VIDEO_PATH_MP4}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-xl bg-[#F97316] px-5 py-2.5 text-sm font-bold text-black hover:bg-[#fb923c]"
+                >
+                  Open demo (MP4)
+                </a>
+              </div>
+            ) : (
+              <video
+                ref={videoRef}
+                className="h-full w-full object-contain"
+                controls
+                playsInline
+                preload="auto"
+                onTimeUpdate={onTimeUpdate}
+                onSeeked={onSeeked}
+                onError={() => setVideoBroken(true)}
+                aria-label="Nect product demo video"
+              >
+                <source src={DEMO_VIDEO_PATH_MP4} type="video/mp4" />
+                <source src={DEMO_VIDEO_PATH_MOV} type="video/quicktime" />
+                Your browser does not support embedded video.
+              </video>
+            )}
           </div>
 
           <div className="border-t border-white/[0.06] bg-black/60 p-4 backdrop-blur-sm md:p-5">

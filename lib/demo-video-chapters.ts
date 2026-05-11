@@ -6,8 +6,11 @@ export type DemoChapter = {
   endSec?: number;
 };
 
-/** Served from `public/demo_YC-S26.mov` — same file as `demo_YC-S26.mov` in project root */
-export const DEMO_VIDEO_PATH = "/demo_YC-S26.mov";
+/** H.264 in MP4 — plays in Chrome, Firefox, Safari (`public/demo_YC-S26.mp4`) */
+export const DEMO_VIDEO_PATH_MP4 = "/demo_YC-S26.mp4";
+
+/** QuickTime container — fallback; original asset name is `demo_YC-S26.mov` in repo root / `public/` */
+export const DEMO_VIDEO_PATH_MOV = "/demo_YC-S26.mov";
 
 /** Order matches: idea → AI drafts → edit & schedule → calendar / overview */
 export const DEMO_CHAPTERS: DemoChapter[] = [
