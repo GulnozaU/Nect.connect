@@ -156,10 +156,11 @@ async function publishX(text: string, profile: any, userId: string, supabase: Aw
 
   if (!attempt.ok) {
     console.error("[publish] X error:", attempt.status, attempt.body);
-    return NextResponse.json(
-      { error: "X rejected the post. Check your connection in Settings." },
-      { status: attempt.status }
-    );
+    const error =
+      attempt.status === 402
+        ? "X returned 402 Payment Required: the X Developer project for this app needs a paid API tier or credits to post tweets. Fix this in https://developer.x.com/ (not an in-app subscription)."
+        : "X rejected the post. Check your connection in Settings.";
+    return NextResponse.json({ error }, { status: attempt.status });
   }
 
   const tweetId = attempt.tweetId;
