@@ -1,15 +1,3 @@
-/**
- * Demo chapter markers for the landing page video.
- *
- * Tune `startSec` (and optional `endSec`) after one pass through `public/demo/nect-demo.mov`
- * (QuickTime: Window → Show Movie Inspector for duration and timing).
- *
- * Optional `endSec`: when set, the landing player pauses there after you jump to that chapter
- * (a soft “cut” without re-encoding).
- *
- * To make real separate files (e.g. for social clips), install ffmpeg and run e.g.:
- *   ffmpeg -y -i public/demo/nect-demo.mov -ss 0 -t 32 -c copy public/demo/clip-idea.mov
- */
 export type DemoChapter = {
   id: string;
   title: string;
@@ -18,7 +6,8 @@ export type DemoChapter = {
   endSec?: number;
 };
 
-export const DEMO_VIDEO_PATH = "/demo/nect-demo.mov";
+/** Served from `public/demo_YC-S26.mov` — same file as `demo_YC-S26.mov` in project root */
+export const DEMO_VIDEO_PATH = "/demo_YC-S26.mov";
 
 /** Order matches: idea → AI drafts → edit & schedule → calendar / overview */
 export const DEMO_CHAPTERS: DemoChapter[] = [
