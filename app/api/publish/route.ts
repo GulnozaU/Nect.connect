@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { decryptLinkedInToken } from "@/lib/linkedin-token-crypto";
 import { getCalendarClient } from "@/lib/google-calendar";
+import { postTweetV2, refreshXPersisted } from "@/lib/x-twitter";
 
 export async function POST(request: Request) {
   const { text, scheduledAt, platform = "linkedin" } = await request.json();
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("linkedin_access_token, linkedin_person_id, x_access_token, x_person_id, x_connected, google_calendar_access_token, google_calendar_refresh_token, google_calendar_token_expiry, google_calendar_connected")
+    .select("linkedin_access_token, linkedin_person_id, x_access_token, x_refresh_token, x_person_id, x_connected, google_calendar_access_token, google_calendar_refresh_token, google_calendar_token_expiry, google_calendar_connected")
     .eq("id", user.id)
     .single();
 
@@ -71,18 +72,18 @@ export async function POST(request: Request) {
 
   // ── IMMEDIATE publish ────────────────────────────────────────────────────
   if (platform === "linkedin") {
-    return publishLinkedIn(text.trim(), profile);
+    return publishLinkedIn(text.trim(), profile, user.id, supabase);
   }
 
   if (platform === "x") {
-    return publishX(text.trim(), profile);
+    return publishX(text.trim(), profile, user.id, supabase);
   }
 
   return NextResponse.json({ error: `Platform "${platform}" not yet supported for immediate publishing.` }, { status: 400 });
 }
 
 // ── LinkedIn publisher ────────────────────────────────────────────────────
-async function publishLinkedIn(text: string, profile: any) {
+async function publishLinkedIn(text: string, profile: any, userId: string, supabase: Awaited<ReturnType<typeof createClient>>) {
   if (!profile.linkedin_access_token || !profile.linkedin_person_id) {
     return NextResponse.json({ error: "LinkedIn account is not connected." }, { status: 400 });
   }
@@ -125,11 +126,20 @@ async function publishLinkedIn(text: string, profile: any) {
   }
 
   const postUrn = res.headers.get("x-restli-id");
+  const { error: rowErr } = await supabase.from("scheduled_posts").insert({
+    user_id: userId,
+    text,
+    scheduled_at: new Date().toISOString(),
+    platform: "linkedin",
+    status: "published",
+    platform_post_id: postUrn,
+  });
+  if (rowErr) console.error("[publish] Could not save published post row:", rowErr.message);
   return NextResponse.json({ success: true, postUrn }, { status: 201 });
 }
 
 // ── X (Twitter) publisher ─────────────────────────────────────────────────
-async function publishX(text: string, profile: any) {
+async function publishX(text: string, profile: any, userId: string, supabase: Awaited<ReturnType<typeof createClient>>) {
   if (!profile.x_connected || !profile.x_access_token) {
     return NextResponse.json({ error: "X account is not connected." }, { status: 400 });
   }
@@ -138,71 +148,31 @@ async function publishX(text: string, profile: any) {
     return NextResponse.json({ error: "X posts cannot exceed 280 characters." }, { status: 400 });
   }
 
-  const res = await fetch("https://api.twitter.com/2/tweets", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${profile.x_access_token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ text }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    console.error("[publish] X error:", res.status, body);
-
-    // Token expired — attempt refresh
-    if (res.status === 401 && profile.x_refresh_token) {
-      const refreshed = await refreshXToken(profile.x_refresh_token, profile.id);
-      if (refreshed) {
-        // Retry once with new token
-        const retry = await fetch("https://api.twitter.com/2/tweets", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${refreshed}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ text }),
-        });
-        if (retry.ok) {
-          const data = await retry.json();
-          return NextResponse.json({ success: true, tweetId: data.data?.id }, { status: 201 });
-        }
-      }
-    }
-
-    return NextResponse.json({ error: "X rejected the post. Check your connection in Settings." }, { status: res.status });
+  let attempt = await postTweetV2(profile.x_access_token, text);
+  if (!attempt.ok && attempt.status === 401 && profile.x_refresh_token) {
+    const refreshed = await refreshXPersisted(supabase, userId, profile.x_refresh_token);
+    if (refreshed) attempt = await postTweetV2(refreshed, text);
   }
 
-  const data = await res.json();
-  return NextResponse.json({ success: true, tweetId: data.data?.id }, { status: 201 });
-}
+  if (!attempt.ok) {
+    console.error("[publish] X error:", attempt.status, attempt.body);
+    return NextResponse.json(
+      { error: "X rejected the post. Check your connection in Settings." },
+      { status: attempt.status }
+    );
+  }
 
-async function refreshXToken(refreshToken: string, userId: string): Promise<string | null> {
-  try {
-    const res = await fetch("https://api.twitter.com/2/oauth2/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Authorization: `Basic ${Buffer.from(`${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`).toString("base64")}`,
-      },
-      body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken }),
+  const tweetId = attempt.tweetId;
+  if (tweetId) {
+    const { error: rowErr } = await supabase.from("scheduled_posts").insert({
+      user_id: userId,
+      text,
+      scheduled_at: new Date().toISOString(),
+      platform: "x",
+      status: "published",
+      platform_post_id: tweetId,
     });
-
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.access_token) return null;
-
-    // Save new tokens
-    const { createClient } = await import("@/lib/supabase/server");
-    const supabase = await createClient();
-    await supabase.from("profiles").update({
-      x_access_token:  data.access_token,
-      x_refresh_token: data.refresh_token ?? refreshToken,
-    }).eq("id", userId);
-
-    return data.access_token;
-  } catch {
-    return null;
+    if (rowErr) console.error("[publish] Could not save published post row:", rowErr.message);
   }
+  return NextResponse.json({ success: true, tweetId }, { status: 201 });
 }

@@ -135,12 +135,13 @@ export function DashboardSidebar({ isAuthenticated, connected }: Props) {
                       On
                     </span>
                   ) : (
-                    <Link
+                    // Plain <a> — Next.js <Link> prefetches hrefs and breaks OAuth redirects (CORS / RSC fetch errors).
+                    <a
                       href={isAuthenticated ? `/api/auth/${platform}` : `/auth?next=/dashboard&intent=connect`}
                       className="text-[10px] text-zinc-500 hover:text-[#F97316] transition-colors"
                     >
                       Connect
-                    </Link>
+                    </a>
                   )}
                 </div>
               );

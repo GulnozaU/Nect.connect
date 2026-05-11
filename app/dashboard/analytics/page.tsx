@@ -2,11 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import {
-  BarChart2, Send, Clock, XCircle,
-  Linkedin, Radio, TrendingUp, MessageSquare,
-  Eye, ThumbsUp, Share2,
-} from "lucide-react";
 import AnalyticsClient from "./analytics-client";
 
 export default async function AnalyticsPage() {
@@ -16,7 +11,7 @@ export default async function AnalyticsPage() {
 
   const { data: posts } = await supabase
     .from("scheduled_posts")
-    .select("id, status, platform, created_at, scheduled_at, text")
+    .select("id, status, platform, created_at, scheduled_at, text, platform_post_id")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 

@@ -2,15 +2,41 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   BarChart2, Send, Clock, XCircle, Linkedin, Radio,
   TrendingUp, MessageSquare, Eye, ThumbsUp, Share2,
   RefreshCw, Loader2,
 } from "lucide-react";
 
-type Post = { id: string; status: string; platform: string; created_at: string; scheduled_at: string; text: string };
+type Post = {
+  id: string;
+  status: string;
+  platform: string;
+  created_at: string;
+  scheduled_at: string;
+  text: string;
+  platform_post_id?: string | null;
+};
 type Stats = { total: number; published: number; pending: number; failed: number };
+
+type MetricsRow = {
+  impressions: number | null;
+  likes: number;
+  shares: number;
+  comments: number;
+  source: string;
+  error?: string;
+};
+
+type CommentRow = {
+  id: string;
+  scheduledPostId: string;
+  platform: string;
+  author: string;
+  text: string;
+  createdAt: string;
+};
 
 interface Props {
   stats: Stats;
@@ -28,22 +54,50 @@ const PLATFORM_META: Record<string, { icon: React.ElementType; color: string; la
   x:        { icon: Radio,    color: "#e4e4e7", label: "X" },
 };
 
-// Mock impression data — replace with real API calls when you have analytics tokens
-function getMockImpressions(platform: string) {
-  return {
-    impressions: Math.floor(Math.random() * 5000) + 500,
-    likes:       Math.floor(Math.random() * 200) + 10,
-    shares:      Math.floor(Math.random() * 50) + 2,
-    comments:    Math.floor(Math.random() * 30) + 1,
-  };
+function formatInsightDate(iso: string) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCounts, recentPosts, profile }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
-  const [impressionsData, setImpressionsData] = useState<Record<string, ReturnType<typeof getMockImpressions>>>({});
-  const [loadingImpressions, setLoadingImpressions] = useState(false);
+  const [insights, setInsights] = useState<{
+    metricsByPostId: Record<string, MetricsRow>;
+    comments: CommentRow[];
+  } | null>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   const maxWeek = Math.max(...weekCounts, 1);
+
+  const loadInsights = useCallback(async () => {
+    setLoadingInsights(true);
+    setInsightsError(null);
+    try {
+      const res = await fetch("/api/analytics/insights");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to load insights");
+      setInsights({
+        metricsByPostId: data.metricsByPostId ?? {},
+        comments: data.comments ?? [],
+      });
+    } catch (e) {
+      setInsights(null);
+      setInsightsError(e instanceof Error ? e.message : "Failed to load insights");
+    } finally {
+      setLoadingInsights(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab !== "impressions" && tab !== "comments") return;
+    if (loadingInsights) return;
+    if (insights !== null) return;
+    if (insightsError !== null) return;
+    void loadInsights();
+  }, [tab, insights, insightsError, loadingInsights, loadInsights]);
 
   const statCards = [
     { label: "Total posts",  value: stats.total,     icon: BarChart2, color: "text-zinc-300" },
@@ -52,27 +106,16 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
     { label: "Failed",       value: stats.failed,     icon: XCircle,   color: "text-red-400" },
   ];
 
-  function loadImpressions() {
-    setLoadingImpressions(true);
-    // Simulate API call — replace with real LinkedIn/X analytics API
-    setTimeout(() => {
-      const data: Record<string, ReturnType<typeof getMockImpressions>> = {};
-      recentPosts
-        .filter((p) => p.status === "published")
-        .slice(0, 10)
-        .forEach((p) => { data[p.id] = getMockImpressions(p.platform); });
-      setImpressionsData(data);
-      setLoadingImpressions(false);
-    }, 800);
-  }
-
-  useEffect(() => {
-    if (tab === "impressions" && Object.keys(impressionsData).length === 0) {
-      loadImpressions();
-    }
-  }, [tab]);
-
   const publishedPosts = recentPosts.filter((p) => p.status === "published");
+  const metricsByPostId = insights?.metricsByPostId ?? {};
+
+  const totalImpressions = Object.values(metricsByPostId).reduce(
+    (a, b) => a + (typeof b.impressions === "number" ? b.impressions : 0),
+    0
+  );
+  const totalLikes = Object.values(metricsByPostId).reduce((a, b) => a + b.likes, 0);
+  const totalShares = Object.values(metricsByPostId).reduce((a, b) => a + b.shares, 0);
+  const totalComments = Object.values(metricsByPostId).reduce((a, b) => a + b.comments, 0);
 
   return (
     <div className="mx-auto max-w-4xl px-5 py-10 md:px-8">
@@ -112,7 +155,6 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
       {/* ── Overview tab ── */}
       {tab === "overview" && (
         <div className="space-y-5">
-          {/* Weekly trend chart */}
           <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-6">
             <h2 className="mb-5 flex items-center gap-2 text-sm font-semibold text-zinc-300">
               <TrendingUp className="h-4 w-4 text-[#F97316]" />
@@ -136,7 +178,6 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
             )}
           </div>
 
-          {/* By platform */}
           <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-6">
             <h2 className="mb-4 text-sm font-semibold text-zinc-300">Posts by platform</h2>
             {Object.keys(byPlatform).length === 0 ? (
@@ -162,7 +203,6 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
             )}
           </div>
 
-          {/* Recent posts list */}
           <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-6">
             <h2 className="mb-4 text-sm font-semibold text-zinc-300">Recent posts</h2>
             {recentPosts.length === 0 ? (
@@ -208,23 +248,28 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-zinc-600">Showing impressions for your {publishedPosts.slice(0, 10).length} most recent published posts.</p>
-                <button onClick={loadImpressions} disabled={loadingImpressions}
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 hover:border-white/20 hover:text-zinc-200 disabled:opacity-40 transition-colors">
-                  {loadingImpressions ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-zinc-600">
+                  Live metrics for X (tweet IDs stored after publish). LinkedIn totals need member post analytics on your LinkedIn app.
+                </p>
+                <button onClick={() => void loadInsights()} disabled={loadingInsights}
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 hover:border-white/20 hover:text-zinc-200 disabled:opacity-40 transition-colors">
+                  {loadingInsights ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                   Refresh
                 </button>
               </div>
 
-              {/* Total impression summary */}
-              {Object.keys(impressionsData).length > 0 && (
+              {insightsError && (
+                <p className="rounded-xl border border-red-900/40 bg-red-950/30 px-3 py-2 text-xs text-red-300">{insightsError}</p>
+              )}
+
+              {insights && Object.keys(metricsByPostId).length > 0 && (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {[
-                    { label: "Total impressions", icon: Eye,       value: Object.values(impressionsData).reduce((a, b) => a + b.impressions, 0).toLocaleString() },
-                    { label: "Total likes",       icon: ThumbsUp,  value: Object.values(impressionsData).reduce((a, b) => a + b.likes, 0).toLocaleString() },
-                    { label: "Total shares",      icon: Share2,    value: Object.values(impressionsData).reduce((a, b) => a + b.shares, 0).toLocaleString() },
-                    { label: "Total comments",    icon: MessageSquare, value: Object.values(impressionsData).reduce((a, b) => a + b.comments, 0).toLocaleString() },
+                    { label: "Total impressions", icon: Eye, value: totalImpressions > 0 ? totalImpressions.toLocaleString() : "—" },
+                    { label: "Total likes",       icon: ThumbsUp,  value: totalLikes.toLocaleString() },
+                    { label: "Total shares",      icon: Share2,    value: totalShares.toLocaleString() },
+                    { label: "Total replies",     icon: MessageSquare, value: totalComments.toLocaleString() },
                   ].map(({ label, icon: Icon, value }) => (
                     <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.02] p-4">
                       <Icon className="mb-2 h-4 w-4 text-[#F97316]" />
@@ -235,8 +280,7 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
                 </div>
               )}
 
-              {/* Per-post impressions */}
-              {loadingImpressions ? (
+              {loadingInsights && !insights ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl border border-white/8 bg-white/[0.02]" />)}
                 </div>
@@ -245,7 +289,7 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
                   {publishedPosts.slice(0, 10).map((post) => {
                     const meta = PLATFORM_META[post.platform];
                     const Icon = meta?.icon ?? BarChart2;
-                    const imp  = impressionsData[post.id];
+                    const imp  = metricsByPostId[post.id];
                     return (
                       <div key={post.id} className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
                         <div className="mb-3 flex items-start gap-3">
@@ -256,20 +300,25 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
                           </span>
                         </div>
                         {imp ? (
-                          <div className="grid grid-cols-4 gap-3">
-                            {[
-                              { label: "Impressions", value: imp.impressions.toLocaleString(), icon: Eye },
-                              { label: "Likes",       value: imp.likes.toLocaleString(),       icon: ThumbsUp },
-                              { label: "Shares",      value: imp.shares.toLocaleString(),      icon: Share2 },
-                              { label: "Comments",    value: imp.comments.toLocaleString(),    icon: MessageSquare },
-                            ].map(({ label, value, icon: IIcon }) => (
-                              <div key={label} className="rounded-xl bg-black/30 p-3 text-center">
-                                <IIcon className="mx-auto mb-1 h-3.5 w-3.5 text-zinc-600" />
-                                <p className="text-base font-bold text-white">{value}</p>
-                                <p className="text-[9px] text-zinc-700">{label}</p>
-                              </div>
-                            ))}
-                          </div>
+                          <>
+                            <div className="grid grid-cols-4 gap-3">
+                              {[
+                                { label: "Impressions", value: imp.impressions != null ? imp.impressions.toLocaleString() : "—", icon: Eye },
+                                { label: "Likes",       value: imp.likes.toLocaleString(),       icon: ThumbsUp },
+                                { label: "Shares",      value: imp.shares.toLocaleString(),      icon: Share2 },
+                                { label: "Replies",     value: imp.comments.toLocaleString(),    icon: MessageSquare },
+                              ].map(({ label, value, icon: IIcon }) => (
+                                <div key={label} className="rounded-xl bg-black/30 p-3 text-center">
+                                  <IIcon className="mx-auto mb-1 h-3.5 w-3.5 text-zinc-600" />
+                                  <p className="text-base font-bold text-white">{value}</p>
+                                  <p className="text-[9px] text-zinc-700">{label}</p>
+                                </div>
+                              ))}
+                            </div>
+                            {imp.error && (
+                              <p className="mt-2 text-[10px] text-zinc-600">{imp.error}</p>
+                            )}
+                          </>
                         ) : (
                           <div className="h-16 animate-pulse rounded-xl bg-white/5" />
                         )}
@@ -281,8 +330,7 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
 
               <div className="rounded-2xl border border-dashed border-white/8 p-4 text-center">
                 <p className="text-xs text-zinc-700">
-                  Note: Impressions shown are estimates. Real-time data requires LinkedIn Analytics API and X Metrics API — both need approved developer access. 
-                  <a href="https://developer.linkedin.com/docs/analytics" target="_blank" rel="noopener noreferrer" className="ml-1 text-[#F97316] hover:underline">Learn more →</a>
+                  X impression counts use Twitter API v2 non-public metrics when your app and token allow it. Older posts may lack a stored tweet id until you publish again from Nect.
                 </p>
               </div>
             </div>
@@ -296,55 +344,65 @@ export default function AnalyticsClient({ stats, byPlatform, weekLabels, weekCou
           {!profile.linkedinConnected && !profile.xConnected ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-6 py-16 text-center">
               <MessageSquare className="mx-auto mb-3 h-8 w-8 text-zinc-700" />
-              <p className="text-sm font-medium text-zinc-400">Connect LinkedIn or X to see comments</p>
+              <p className="text-sm font-medium text-zinc-400">Connect LinkedIn or X to load comment data</p>
             </div>
           ) : (
             <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-zinc-600">
+                  Replies on X threads (from X API recent search). LinkedIn reply text needs Community Management / analytics APIs.
+                </p>
+                <button onClick={() => void loadInsights()} disabled={loadingInsights}
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-zinc-400 hover:border-white/20 hover:text-zinc-200 disabled:opacity-40 transition-colors">
+                  {loadingInsights ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Refresh
+                </button>
+              </div>
+
+              {insightsError && (
+                <p className="rounded-xl border border-red-900/40 bg-red-950/30 px-3 py-2 text-xs text-red-300">{insightsError}</p>
+              )}
+
               <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-6">
                 <div className="flex items-center gap-3 mb-5">
                   <MessageSquare className="h-5 w-5 text-[#F97316]" />
-                  <h2 className="text-sm font-semibold text-zinc-300">Recent comments on your posts</h2>
+                  <h2 className="text-sm font-semibold text-zinc-300">Replies on your X posts</h2>
                 </div>
 
-                {publishedPosts.length === 0 ? (
-                  <p className="text-sm text-zinc-600">Publish posts to see comments here.</p>
+                {loadingInsights && !insights ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-white/5" />)}
+                  </div>
+                ) : publishedPosts.length === 0 ? (
+                  <p className="text-sm text-zinc-600">Publish posts to see thread replies here.</p>
+                ) : (insights?.comments?.length ?? 0) === 0 ? (
+                  <p className="text-sm text-zinc-600">
+                    No thread replies returned yet. This can happen if there are no replies, or if your X developer project does not include access to recent search for conversation threads.
+                  </p>
                 ) : (
                   <div className="space-y-3">
-                    {/* Mock comments — replace with real API when LinkedIn/X analytics approved */}
-                    {[
-                      { platform: "linkedin", author: "Sarah K.", comment: "This is such a great insight! I've been thinking about this exact topic lately.", time: "2h ago", avatar: "SK" },
-                      { platform: "linkedin", author: "Marcus T.", comment: "Love this perspective. How long did it take you to build this?", time: "5h ago", avatar: "MT" },
-                      { platform: "x",        author: "@techfounder", comment: "Retweeted this — super relevant for anyone building in public 🔥", time: "1d ago", avatar: "TF" },
-                      { platform: "linkedin", author: "Priya M.", comment: "Excellent write-up. Would love to connect and discuss further!", time: "2d ago", avatar: "PM" },
-                      { platform: "x",        author: "@aisarah22", comment: "This is exactly what I needed to read today. Thank you!", time: "3d ago", avatar: "AS" },
-                    ].map(({ platform, author, comment, time, avatar }, i) => {
-                      const meta = PLATFORM_META[platform];
+                    {(insights?.comments ?? []).map((c) => {
+                      const meta = PLATFORM_META[c.platform];
                       const Icon = meta?.icon ?? BarChart2;
+                      const initials = c.author.replace(/^@/, "").slice(0, 2).toUpperCase();
                       return (
-                        <div key={i} className="flex items-start gap-3 rounded-xl border border-white/5 bg-black/20 px-4 py-3">
+                        <div key={c.id} className="flex items-start gap-3 rounded-xl border border-white/5 bg-black/20 px-4 py-3">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F97316]/15 text-xs font-bold text-[#F97316]">
-                            {avatar}
+                            {initials}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-semibold text-zinc-300">{author}</span>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="text-xs font-semibold text-zinc-300">{c.author}</span>
                               <Icon className="h-3 w-3" style={{ color: meta?.color }} />
-                              <span className="text-[10px] text-zinc-600">{time}</span>
+                              <span className="text-[10px] text-zinc-600">{formatInsightDate(c.createdAt)}</span>
                             </div>
-                            <p className="text-xs leading-relaxed text-zinc-500">{comment}</p>
+                            <p className="text-xs leading-relaxed text-zinc-500 whitespace-pre-wrap break-words">{c.text}</p>
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 )}
-              </div>
-
-              <div className="rounded-2xl border border-dashed border-white/8 p-4 text-center">
-                <p className="text-xs text-zinc-700">
-                  Comments shown are samples. Live comments require LinkedIn Community Management API and X v2 API with elevated access.
-                  <a href="https://developer.linkedin.com" target="_blank" rel="noopener noreferrer" className="ml-1 text-[#F97316] hover:underline">Apply for access →</a>
-                </p>
               </div>
             </div>
           )}

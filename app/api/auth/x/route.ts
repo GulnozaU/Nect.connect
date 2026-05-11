@@ -28,13 +28,13 @@ export async function GET() {
   });
 
   const response = NextResponse.redirect(
-    `https://twitter.com/i/oauth2/authorize?${params.toString()}`
+    `https://x.com/i/oauth2/authorize?${params.toString()}`
   );
 
   // Store verifier + state in cookies for the callback
   const cookieOpts = {
     httpOnly: true,
-    secure:   true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     maxAge:   600, // 10 minutes
     path:     "/",
