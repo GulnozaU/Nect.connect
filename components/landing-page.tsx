@@ -20,6 +20,8 @@ import {
   Shield,
 } from "lucide-react";
 
+import { LandingDemoVideo } from "@/components/landing-demo-video";
+
 // ── Spiral/orbit logo SVG ────────────────────────────────────────────────────
 function NectLogo({ className = "h-6 w-6" }: { className?: string }) {
   return (
@@ -265,10 +267,10 @@ export function LandingPage() {
 
               {/* Secondary — border lights up orange */}
               <Link
-                href="/dashboard"
+                href="/#demo"
                 className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-7 py-3.5 text-sm font-semibold text-zinc-300 transition-all duration-200 hover:border-[#F97316]/50 hover:text-white hover:shadow-[0_0_18px_rgba(249,115,22,0.15)] active:scale-[0.97]"
               >
-                Try demo
+                Watch demo
               </Link>
 
               {/* Tertiary — text link */}
@@ -303,6 +305,8 @@ export function LandingPage() {
             </motion.div>
           </InView>
         </section>
+
+        <LandingDemoVideo />
 
         {/* ── How it works ── */}
         <section className="border-t border-white/[0.06] py-24">
