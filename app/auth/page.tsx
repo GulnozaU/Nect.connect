@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getPublicSiteOrigin } from "@/lib/public-site-origin";
 import { createClient } from "@/lib/supabase/client";
 import {
   Loader2, Mail, Lock, User, ArrowRight,
@@ -55,7 +56,7 @@ export default function AuthPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("error") !== "auth_callback_failed") return;
     setError(
-      "Google sign-in did not complete. In the Supabase dashboard: Authentication → URL Configuration — add your site URL and `/api/auth/callback` under Redirect URLs. In Google Cloud Console (APIs & Services → Credentials → your OAuth client): Authorized redirect URIs must include `https://<your-project-ref>.supabase.co/auth/v1/callback` (from Supabase → Authentication → Providers → Google)."
+      "Google sign-in did not complete. In Supabase: Authentication → URL Configuration — set Site URL to your live domain, and add `https://<your-domain>/api/auth/callback` under Redirect URLs (if the redirect URL is not allowlisted, Supabase sends users to Site URL, which may be an old domain). In Google Cloud Console → OAuth client, Authorized redirect URIs must include `https://<project-ref>.supabase.co/auth/v1/callback`. Optional: set NEXT_PUBLIC_SITE_URL to your canonical origin so OAuth always matches the allowlist."
     );
     const clean = `${window.location.pathname}${window.location.hash}`;
     window.history.replaceState({}, "", clean);
@@ -65,10 +66,11 @@ export default function AuthPage() {
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     setError(null);
+    const origin = getPublicSiteOrigin();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`,
+        redirectTo: `${origin}/api/auth/callback`,
       },
     });
     if (error) {
@@ -94,12 +96,13 @@ export default function AuthPage() {
     if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
     setLoading(true);
     setError(null);
+    const origin = getPublicSiteOrigin();
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/api/auth/callback`,
+        emailRedirectTo: `${origin}/api/auth/callback`,
       },
     });
     if (error) { setError(error.message); setLoading(false); return; }
@@ -150,7 +153,7 @@ export default function AuthPage() {
                 await supabase.auth.resend({
                   type: "signup",
                   email,
-                  options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },
+                  options: { emailRedirectTo: `${getPublicSiteOrigin()}/api/auth/callback` },
                 });
               }}
               className="mt-2 text-xs text-[#F97316] hover:text-[#fb923c] transition-colors"
@@ -321,7 +324,7 @@ export default function AuthPage() {
                     if (!email) { setError("Enter your email first."); return; }
                     setLoading(true);
                     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                      redirectTo: `${window.location.origin}/api/auth/callback?type=recovery`,
+                      redirectTo: `${getPublicSiteOrigin()}/api/auth/callback?type=recovery`,
                     });
                     setLoading(false);
                     if (error) setError(error.message);
