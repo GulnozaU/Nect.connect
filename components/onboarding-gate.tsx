@@ -15,6 +15,8 @@ import { PLATFORM_KEYS, type PlatformKey } from "@/lib/platforms";
 type Props = {
   initialFullName: string;
   initialPlatforms: string[];
+  /** When user came from marketing with ?plan=pro, start a one-time Pro trial at onboarding end. */
+  startProTrialOffer?: boolean;
 };
 
 const platformMeta: Record<
@@ -28,7 +30,7 @@ const platformMeta: Record<
   linkedin: { label: "LinkedIn", icon: Linkedin },
 };
 
-export function OnboardingGate({ initialFullName, initialPlatforms }: Props) {
+export function OnboardingGate({ initialFullName, initialPlatforms, startProTrialOffer }: Props) {
   const router = useRouter();
   const [name, setName] = useState(initialFullName);
   const [step, setStep] = useState(1);
@@ -47,7 +49,9 @@ export function OnboardingGate({ initialFullName, initialPlatforms }: Props) {
     }
     setLoading(true);
     try {
-      await completeOnboarding(trimmed, selected);
+      await completeOnboarding(trimmed, selected, {
+        startProTrial: Boolean(startProTrialOffer),
+      });
       router.replace("/dashboard");
       router.refresh();
     } catch (err) {

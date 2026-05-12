@@ -16,6 +16,7 @@ import {
   FileText,
   BarChart2,
   Settings,
+  MessageSquare,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ const icons: Record<PlatformKey, React.ComponentType<{ className?: string }>> = 
 const navItems = [
   { href: "/dashboard",          label: "Home",         icon: LayoutDashboard },
   { href: "/dashboard/create",   label: "Create Post",  icon: PenLine,  highlight: true },
+  { href: "/dashboard/chat",     label: "Chat",         icon: MessageSquare },
   { href: "/dashboard/scheduled",label: "Scheduled",    icon: CalendarDays },
   { href: "/dashboard/drafts",   label: "Drafts",       icon: FileText },
   { href: "/dashboard/analytics",label: "Analytics",    icon: BarChart2 },
@@ -43,9 +45,11 @@ const navItems = [
 type Props = {
   isAuthenticated: boolean;
   connected: Record<PlatformKey, boolean>;
+  /** Pro plan or active trial — required to connect X. */
+  xEntitled: boolean;
 };
 
-export function DashboardSidebar({ isAuthenticated, connected }: Props) {
+export function DashboardSidebar({ isAuthenticated, connected, xEntitled }: Props) {
   const pathname = usePathname();
 
   async function signOut() {
@@ -120,6 +124,15 @@ export function DashboardSidebar({ isAuthenticated, connected }: Props) {
             {PLATFORM_KEYS.map((platform) => {
               const Icon = icons[platform];
               const isConnected = connected[platform];
+              const xLocked = platform === "x" && isAuthenticated && !xEntitled && !isConnected;
+              const connectHref =
+                isAuthenticated && platform === "x"
+                  ? xLocked
+                    ? "/dashboard/settings?open=billing"
+                    : "/api/auth/x"
+                  : isAuthenticated
+                  ? `/api/auth/${platform}`
+                  : `/auth?next=/dashboard&intent=connect`;
               return (
                 <div
                   key={platform}
@@ -134,10 +147,16 @@ export function DashboardSidebar({ isAuthenticated, connected }: Props) {
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                       On
                     </span>
-                  ) : (
-                    // Plain <a> — Next.js <Link> prefetches hrefs and breaks OAuth redirects (CORS / RSC fetch errors).
+                  ) : xLocked ? (
                     <a
-                      href={isAuthenticated ? `/api/auth/${platform}` : `/auth?next=/dashboard&intent=connect`}
+                      href={connectHref}
+                      className="text-[10px] text-amber-500/90 hover:text-amber-400 transition-colors"
+                    >
+                      Pro / trial
+                    </a>
+                  ) : (
+                    <a
+                      href={connectHref}
                       className="text-[10px] text-zinc-500 hover:text-[#F97316] transition-colors"
                     >
                       Connect

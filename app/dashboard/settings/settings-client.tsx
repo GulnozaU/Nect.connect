@@ -1,17 +1,24 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
-  Linkedin, Facebook, Radio, Calendar,
+  Linkedin, Radio, Calendar,
   CheckCircle2, Trash2, Loader2, ChevronDown, ChevronUp,
-  Shield, FileText, Lock, AlertTriangle,
+  Shield, FileText, Lock, AlertTriangle, CreditCard,
 } from "lucide-react";
 
 interface Props {
   user: { id: string; email: string; name: string };
   connected: { linkedin: boolean;  x: boolean; googleCalendar: boolean };
+  billing: {
+    plan: string;
+    proTrialEndsAt: string | null;
+    proTrialUsed: boolean;
+    xEntitled: boolean;
+  };
 }
 
 const PLATFORMS = [
@@ -21,16 +28,29 @@ const PLATFORMS = [
 
 type Section = "account" | "platforms" | "billing" | "privacy" | "terms" | "delete" | null;
 
-export default function SettingsClient({ user, connected }: Props) {
+export default function SettingsClient({ user, connected, billing }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [openSection, setOpenSection] = useState<Section>("account");
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting]           = useState(false);
   const [toast, setToast]                 = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [trialLoading, setTrialLoading]   = useState(false);
 
   function showToast(type: "success" | "error", msg: string) {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4000);
   }
+
+  useEffect(() => {
+    if (searchParams.get("open") === "billing") {
+      setOpenSection("billing");
+    }
+    if (searchParams.get("x") === "requires_pro") {
+      setOpenSection("billing");
+      showToast("error", "Connecting X requires Pro or an active trial. Start a trial below.");
+    }
+  }, [searchParams]);
 
   async function handleDeleteAccount() {
     if (deleteConfirm !== "DELETE") return;
@@ -52,7 +72,25 @@ export default function SettingsClient({ user, connected }: Props) {
   }
 
   function toggle(s: Section) {
-    setOpenSection((prev) => prev === s ? null : s);
+    setOpenSection((prev) => (prev === s ? null : s));
+  }
+
+  async function startProTrial() {
+    setTrialLoading(true);
+    try {
+      const res = await fetch("/api/billing/start-trial", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showToast("error", typeof data.error === "string" ? data.error : "Could not start trial.");
+        return;
+      }
+      showToast("success", "Pro trial active — you can connect X from Connected Platforms.");
+      router.refresh();
+    } catch {
+      showToast("error", "Could not start trial.");
+    } finally {
+      setTrialLoading(false);
+    }
   }
 
   return (
@@ -88,6 +126,7 @@ export default function SettingsClient({ user, connected }: Props) {
           <div className="space-y-2">
             {PLATFORMS.map(({ key, label, icon: Icon, color, connectHref }) => {
               const isConnected = connected[key as keyof typeof connected];
+              const lockedX = key === "x" && !billing.xEntitled && !isConnected;
               return (
                 <div key={key} className="flex items-center justify-between rounded-xl border border-white/8 bg-black/20 px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -98,6 +137,8 @@ export default function SettingsClient({ user, connected }: Props) {
                     <span className="flex items-center gap-1.5 text-xs text-green-400">
                       <CheckCircle2 className="h-3.5 w-3.5" /> Connected
                     </span>
+                  ) : lockedX ? (
+                    <span className="text-xs text-amber-500/90">Pro / trial</span>
                   ) : (
                     <a href={connectHref}
                       className="rounded-lg bg-[#F97316]/10 px-3 py-1.5 text-xs font-semibold text-[#F97316] transition-colors hover:bg-[#F97316]/20">
@@ -134,6 +175,49 @@ export default function SettingsClient({ user, connected }: Props) {
                 <span className="rounded-full border border-zinc-800 px-2.5 py-1 text-[10px] text-zinc-700">Coming soon</span>
               </div>
             ))}
+          </div>
+        </Section>
+
+        <Section title="Billing & X access" icon={<CreditCard className="h-4 w-4" />} open={openSection === "billing"} onToggle={() => toggle("billing")}>
+          <div className="space-y-4 text-sm text-zinc-400">
+            <p>
+              Current plan:{" "}
+              <span className="font-semibold text-zinc-200">
+                {billing.plan === "pro" ? "Pro" : billing.xEntitled ? "Pro trial" : "Free"}
+              </span>
+            </p>
+            {billing.proTrialEndsAt && billing.plan !== "pro" && billing.xEntitled ? (
+              <p className="text-xs text-zinc-500">
+                Trial access until{" "}
+                {new Date(billing.proTrialEndsAt).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+                . X connect and X publish stay unlocked until then.
+              </p>
+            ) : null}
+            <p className="text-xs leading-relaxed text-zinc-600">
+              Connecting and posting to <strong className="text-zinc-400">X</strong> requires Pro or an active trial.
+              LinkedIn and calendar features stay available on the Free plan.
+            </p>
+            {!billing.xEntitled ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => void startProTrial()}
+                  disabled={trialLoading || billing.proTrialUsed}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#F97316] px-4 py-2.5 text-sm font-bold text-black hover:bg-[#fb923c] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {trialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {billing.proTrialUsed ? "Trial already used" : "Start 14-day Pro trial"}
+                </button>
+                {billing.proTrialUsed ? (
+                  <span className="text-xs text-zinc-600">Paid checkout will land here when billing is wired (Stripe).</span>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-xs text-emerald-500/90">X access is active. Connect X under Connected Platforms if you have not yet.</p>
+            )}
           </div>
         </Section>
 

@@ -18,6 +18,7 @@ import {
   Sparkles,
   BarChart2,
   Shield,
+  CalendarClock,
 } from "lucide-react";
 
 import { LandingDemoVideo } from "@/components/landing-demo-video";
@@ -105,7 +106,7 @@ const steps = [
   {
     n: "02",
     title: "AI writes platform-native posts",
-    desc: "Get a LinkedIn article, an Instagram caption, a punchy tweet, and a Reddit post — all completely different.",
+    desc: "LinkedIn drafts use short lines and space so they read on mobile — not one pasted block. X stays punchy within the limit. Add Facebook when you generate all platforms.",
     icon: Zap,
   },
   {
@@ -120,7 +121,12 @@ const differences = [
   {
     icon: Zap,
     title: "Different post for every platform",
-    desc: "LinkedIn gets long-form insight. Instagram gets captions and hashtags. X gets something punchy. Not the same text pasted everywhere.",
+    desc: "LinkedIn gets scroll-friendly lines and story beats. X gets something punchy. Facebook gets a social tone. Not the same text pasted everywhere.",
+  },
+  {
+    icon: Linkedin,
+    title: "LinkedIn that reads on a phone",
+    desc: "Drafts break into short lines and breathing room so the post feels native in the feed — not a wall of text you have to reformat by hand.",
   },
   {
     icon: MessageCircle,
@@ -145,7 +151,25 @@ const differences = [
   {
     icon: Sparkles,
     title: "Select up to 3 platforms at once",
-    desc: "Generate posts for LinkedIn, Instagram, and X simultaneously. One idea, three platform-perfect drafts in seconds.",
+    desc: "Generate posts for LinkedIn, Facebook, and X simultaneously. One idea, platform-perfect drafts in seconds.",
+  },
+];
+
+const vsSchedulers = [
+  {
+    icon: CalendarClock,
+    title: "Schedulers own the calendar",
+    desc: "Buffer, Later, and Hootsuite shine at queues, teams, and approvals. They assume you already wrote something worth shipping.",
+  },
+  {
+    icon: Sparkles,
+    title: "Nect starts with native writing",
+    desc: "One idea becomes drafts shaped for each feed: tone, length, and line breaks where they matter (especially LinkedIn on mobile).",
+  },
+  {
+    icon: Zap,
+    title: "Built for solo speed",
+    desc: "A fast loop for founders and creators: idea → edit → schedule or publish — without hopping between a doc, a scheduler, and five tabs.",
   },
 ];
 
@@ -251,7 +275,7 @@ export function LandingPage() {
             </motion.h1>
 
             <motion.p variants={fadeUp} className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400 md:text-xl">
-              Nect generates unique, platform-native posts for Instagram, X, LinkedIn, Reddit, and Facebook — all from one idea. No copy-pasting. No reformatting. No guessing what works where.
+              Nect turns one idea into platform-native posts for LinkedIn, X, Facebook, and more — each draft shaped for how that feed is read (including line-first LinkedIn you do not have to re-break manually). No copy-pasting the same paragraph everywhere.
             </motion.p>
 
             {/* CTAs */}
@@ -355,7 +379,7 @@ export function LandingPage() {
             <motion.h2 variants={fadeUp} className="mb-14 text-4xl font-extrabold leading-tight md:text-5xl">
               Not just another scheduler.
               <br />
-              <span className="text-zinc-600">Built different.</span>
+              <span className="text-zinc-600">Built for native drafts.</span>
             </motion.h2>
 
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -376,7 +400,38 @@ export function LandingPage() {
           </InView>
         </section>
 
-   
+        {/* ── vs scheduling tools (Buffer, Later, …) ── */}
+        <section className="border-t border-white/[0.06] py-24">
+          <InView>
+            <motion.p variants={fadeUp} className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#F97316]">
+              Why Nect vs Buffer or Later
+            </motion.p>
+            <motion.h2 variants={fadeUp} className="mb-3 max-w-3xl text-4xl font-extrabold leading-tight md:text-5xl">
+              They help you <span className="text-zinc-600">queue</span> content.
+              <br />
+              We help you <span className="text-[#F97316]">rewrite</span> it per platform.
+            </motion.h2>
+            <motion.p variants={fadeUp} className="mb-14 max-w-2xl text-base leading-relaxed text-zinc-500">
+              Incumbents can add AI summaries — the gap we care about is workflow: one spark of an idea, then distinct drafts for LinkedIn, X, and Facebook without manually re-breaking lines or tone-matching each network by hand.
+            </motion.p>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {vsSchedulers.map(({ icon: Icon, title, desc }) => (
+                <motion.div
+                  key={title}
+                  variants={fadeUp}
+                  className="rounded-2xl border border-white/8 bg-white/[0.02] p-6 transition-all duration-200 hover:border-[#F97316]/20 hover:bg-white/[0.03]"
+                >
+                  <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#F97316]/8">
+                    <Icon className="h-5 w-5 text-[#F97316]" />
+                  </div>
+                  <h3 className="mb-2 text-base font-bold text-white">{title}</h3>
+                  <p className="text-sm leading-relaxed text-zinc-600">{desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </InView>
+        </section>
 
         {/* ── Pricing ── */}
         <section className="border-t border-white/[0.06] py-24">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { hasXPlatformAccess } from "@/lib/subscription";
 import { getXRedirectUri } from "@/lib/x-oauth";
 
 function fail(request: Request, reason: string, detail?: string) {
@@ -90,6 +91,16 @@ export async function GET(request: Request) {
 
   if (!user) {
     return NextResponse.redirect(new URL("/auth", request.url));
+  }
+
+  const { data: ent } = await supabase
+    .from("profiles")
+    .select("plan, pro_trial_ends_at")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!hasXPlatformAccess((ent ?? {}) as { plan?: string | null; pro_trial_ends_at?: string | null })) {
+    return fail(request, "entitlement", "X requires Pro or an active paid trial. Start a trial in Settings → Billing.");
   }
 
   const { error: dbError } = await supabase

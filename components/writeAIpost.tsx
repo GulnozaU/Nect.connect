@@ -30,7 +30,7 @@ const PLATFORM_META: Record<
   Platform,
   { label: string; icon: React.ElementType; color: string; bg: string; hint: string }
 > = {
-  linkedin:  { label: "LinkedIn",  icon: Linkedin,      color: "#0A66C2", bg: "bg-[#0A66C2]/10", hint: "Professional, 150-300 words, storytelling" },
+  linkedin:  { label: "LinkedIn",  icon: Linkedin,      color: "#0A66C2", bg: "bg-[#0A66C2]/10", hint: "Short lines for mobile · professional tone" },
   facebook:  { label: "Facebook",  icon: Facebook,      color: "#1877F2", bg: "bg-[#1877F2]/10", hint: "Professional but human and engaging. 150-300 words." }, 
   x:         { label: "X",         icon: Radio,         color: "#ffffff", bg: "bg-white/10",     hint: "Punchy, max 280 chars" },
   // instagram: { label: "Instagram", icon: Instagram,     color: "#E1306C", bg: "bg-[#E1306C]/10", hint: "Casual, emojis, hashtags, 80-150 words" },

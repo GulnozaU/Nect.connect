@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { cookies } from "next/headers";
+import { hasXPlatformAccess } from "@/lib/subscription";
 
 export default async function DashboardLayout({
   children,
@@ -22,17 +23,20 @@ export default async function DashboardLayout({
   if (user) {
     const { data } = await (supabase
       .from("profiles") as any)
-      .select("x_connected, linkedin_connected")
+      .select("x_connected, linkedin_connected, plan, pro_trial_ends_at")
       .eq("id", user.id)
       .maybeSingle();
     
     profile = data;
   }
 
+  const xEntitled = profile ? hasXPlatformAccess(profile as { plan?: string | null; pro_trial_ends_at?: string | null }) : false;
+
   return (
     <div className="flex min-h-screen bg-black p-2">
       <DashboardSidebar
         isAuthenticated={Boolean(user)}
+        xEntitled={xEntitled}
         connected={{
           // Fix: We must provide ALL keys that PlatformKey requires
           x: !!profile?.x_connected,

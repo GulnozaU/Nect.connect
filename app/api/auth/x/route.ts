@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 
+import { createClient } from "@/lib/supabase/server";
+import { hasXPlatformAccess } from "@/lib/subscription";
 import { getXRedirectUri } from "@/lib/x-oauth";
 
 function base64url(buf: Buffer) {
@@ -10,6 +12,26 @@ function base64url(buf: Buffer) {
 export async function GET(request: Request) {
   if (!process.env.X_CLIENT_ID) {
     return new Response("X_CLIENT_ID is not set in environment variables", { status: 500 });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.redirect(new URL("/auth?next=/dashboard/settings", request.url));
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan, pro_trial_ends_at, pro_trial_used")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!hasXPlatformAccess((profile ?? {}) as { plan?: string | null; pro_trial_ends_at?: string | null })) {
+    const to = new URL("/dashboard/settings", request.url);
+    to.searchParams.set("x", "requires_pro");
+    return NextResponse.redirect(to);
   }
 
   const redirectUri = getXRedirectUri(request.url);

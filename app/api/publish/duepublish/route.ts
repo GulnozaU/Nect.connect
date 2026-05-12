@@ -8,6 +8,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { decryptLinkedInToken } from "@/lib/linkedin-token-crypto";
 import { postTweetV2, refreshXPersisted } from "@/lib/x-twitter";
+import { hasXPlatformAccess } from "@/lib/subscription";
 
 export async function publishDuePosts(): Promise<void> {
   const supabase = await createClient();
@@ -41,7 +42,7 @@ export async function publishDuePosts(): Promise<void> {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "linkedin_access_token, linkedin_person_id, x_access_token, x_refresh_token, x_connected, google_calendar_access_token, google_calendar_refresh_token, google_calendar_token_expiry, google_calendar_connected"
+      "linkedin_access_token, linkedin_person_id, x_access_token, x_refresh_token, x_connected, google_calendar_access_token, google_calendar_refresh_token, google_calendar_token_expiry, google_calendar_connected, plan, pro_trial_ends_at"
     )
     .eq("id", user.id)
     .single();
@@ -50,6 +51,8 @@ export async function publishDuePosts(): Promise<void> {
     console.error("[publishDuePosts] Could not load profile:", profileError?.message);
     return;
   }
+
+  const xLocked = !hasXPlatformAccess(profile as { plan?: string | null; pro_trial_ends_at?: string | null });
 
   for (const post of posts) {
     let success = false;
@@ -61,9 +64,14 @@ export async function publishDuePosts(): Promise<void> {
         success = r.ok;
         platformPostId = r.platformPostId ?? null;
       } else if (post.platform === "x") {
-        const r = await publishToXDue(post.text, user.id, profile, supabase);
-        success = r.ok;
-        platformPostId = r.tweetId ?? null;
+        if (xLocked) {
+          console.error("[publishDuePosts] X post skipped: Pro or active trial required");
+          success = false;
+        } else {
+          const r = await publishToXDue(post.text, user.id, profile, supabase);
+          success = r.ok;
+          platformPostId = r.tweetId ?? null;
+        }
       } else {
         console.log(`[publishDuePosts] Platform '${post.platform}' not yet implemented, skipping`);
         continue;

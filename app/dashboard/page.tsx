@@ -68,7 +68,7 @@ export default async function DashboardPage({
               What do you want to post about?
             </h2>
             <p className="text-sm text-zinc-500 mb-4">
-              AI generates platform-perfect posts for LinkedIn, Instagram, X, and Reddit — all different, all native.
+              Turn one idea into LinkedIn and X drafts tailored to each feed — same message, different shape.
             </p>
             <Link
               href="/dashboard/create"

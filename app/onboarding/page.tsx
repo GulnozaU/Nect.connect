@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import { OnboardingGate } from "@/components/onboarding-gate";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: { plan?: string };
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,6 +31,7 @@ export default async function OnboardingPage() {
     <OnboardingGate
       initialFullName={profile?.full_name ?? ""}
       initialPlatforms={profile?.preferred_platforms ?? []}
+      startProTrialOffer={searchParams.plan === "pro"}
     />
   );
 }

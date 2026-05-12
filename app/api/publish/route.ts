@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { decryptLinkedInToken } from "@/lib/linkedin-token-crypto";
 import { getCalendarClient } from "@/lib/google-calendar";
 import { postTweetV2, refreshXPersisted } from "@/lib/x-twitter";
+import { hasXPlatformAccess } from "@/lib/subscription";
 
 export async function POST(request: Request) {
   const { text, scheduledAt, platform = "linkedin" } = await request.json();
@@ -20,7 +21,9 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("linkedin_access_token, linkedin_person_id, x_access_token, x_refresh_token, x_person_id, x_connected, google_calendar_access_token, google_calendar_refresh_token, google_calendar_token_expiry, google_calendar_connected")
+    .select(
+      "linkedin_access_token, linkedin_person_id, x_access_token, x_refresh_token, x_person_id, x_connected, google_calendar_access_token, google_calendar_refresh_token, google_calendar_token_expiry, google_calendar_connected, plan, pro_trial_ends_at"
+    )
     .eq("id", user.id)
     .single();
 
@@ -28,8 +31,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not retrieve profile." }, { status: 500 });
   }
 
+  const xLocked = !hasXPlatformAccess(profile as { plan?: string | null; pro_trial_ends_at?: string | null });
+
   // ── SCHEDULE path ────────────────────────────────────────────────────────
   if (scheduledAt) {
+    if (platform === "x" && xLocked) {
+      return NextResponse.json(
+        {
+          error: "X scheduling requires Pro or an active trial. Open Settings → Billing to start a trial.",
+          code: "x_requires_pro",
+        },
+        { status: 402 }
+      );
+    }
     const { data: scheduledPost, error: scheduleError } = await supabase
       .from("scheduled_posts")
       .insert({ user_id: user.id, text: text.trim(), scheduled_at: scheduledAt, platform, status: "pending" })
@@ -76,6 +90,15 @@ export async function POST(request: Request) {
   }
 
   if (platform === "x") {
+    if (xLocked) {
+      return NextResponse.json(
+        {
+          error: "Publishing to X requires Pro or an active trial. Open Settings → Billing.",
+          code: "x_requires_pro",
+        },
+        { status: 402 }
+      );
+    }
     return publishX(text.trim(), profile, user.id, supabase);
   }
 

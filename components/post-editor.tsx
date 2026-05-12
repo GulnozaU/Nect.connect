@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, CheckCircle2, XCircle, Linkedin, Clock, X } from "lucide-react";
 
 type ToastState = {
@@ -27,6 +27,11 @@ export default function PostEditor({
   const [modal, setModal] = useState<ModalState>(null);
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
+  const [reviewChecked, setReviewChecked] = useState(false);
+
+  useEffect(() => {
+    if (!modal) setReviewChecked(false);
+  }, [modal]);
 
   const charsRemaining = MAX_CHARS - text.length;
   const isOverLimit = charsRemaining < 0;
@@ -200,6 +205,18 @@ export default function PostEditor({
               <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-200">{text.trim()}</p>
             </div>
 
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-900/80 p-3">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-zinc-600 bg-zinc-950"
+                checked={reviewChecked}
+                onChange={(e) => setReviewChecked(e.target.checked)}
+              />
+              <span className="text-xs text-zinc-500">
+                I have reviewed this post. It is accurate and appropriate for my audience and for LinkedIn.
+              </span>
+            </label>
+
             {modal === "schedule" && (
               <div className="mt-4 flex gap-3">
                 <div className="flex-1">
@@ -218,7 +235,8 @@ export default function PostEditor({
               <button
                 type="button"
                 onClick={modal === "confirm" ? () => confirmPublish() : handleConfirmSchedule}
-                className="rounded-md bg-[#F97316] px-4 py-2 text-sm font-semibold text-black hover:bg-[#ea580c]"
+                disabled={!reviewChecked}
+                className="rounded-md bg-[#F97316] px-4 py-2 text-sm font-semibold text-black hover:bg-[#ea580c] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {modal === "confirm" ? "Yes, publish now" : "Schedule post"}
               </button>

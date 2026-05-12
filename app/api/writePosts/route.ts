@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { formatLinkedInPost } from "@/lib/format-linkedin-post";
 
 const PLATFORM_INSTRUCTIONS: Record<string, string> = {
-  linkedin: `Write a LinkedIn post. Professional yet human tone. 150-300 words. 
-    Include a hook first line, insight or story, and end with a question or CTA. 
-    No hashtags in the body — add 3-5 relevant hashtags at the end on a new line.`,
+  linkedin: `Write a LinkedIn post. Professional yet human tone. 150-300 words.
+    FORMAT (critical): Never output one wall of text. Use short vertical rhythm: one sentence or one thought per line, blank line between ideas (double newline). Hooks can be a single line. Optional bullets with "• " if it fits.
+    Include a hook first line, insight or story, and end with a question or CTA — each on separate short lines / blocks.
+    No hashtags in the body — add 3-5 relevant hashtags at the very end on their own line(s).`,
 
  /* instagram: `Write an Instagram caption. Conversational, energetic, relatable. 
     80-150 words. Start with an attention-grabbing first line. 
@@ -79,7 +81,8 @@ export async function POST(request: Request) {
         }
 
         const data = await response.json();
-        const text = data.content?.[0]?.text?.trim() ?? "";
+        let text = data.content?.[0]?.text?.trim() ?? "";
+        if (p === "linkedin") text = formatLinkedInPost(text);
         return [p, text] as [string, string];
       })
     );
