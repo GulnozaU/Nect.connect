@@ -66,7 +66,13 @@ export default function AuthPage() {
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     setError(null);
-    const origin = getPublicSiteOrigin();
+    // Always send the OAuth round-trip back to the same host the user is on.
+    // If `redirectTo` is not in Supabase "Redirect URLs", Supabase falls back to Site URL
+    // with `?code=` on `/` — often an old domain — which breaks session exchange.
+    const origin =
+      typeof window !== "undefined" && window.location.origin
+        ? window.location.origin
+        : getPublicSiteOrigin();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
